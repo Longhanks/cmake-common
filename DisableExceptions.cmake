@@ -1,0 +1,8 @@
+function(target_disable_exceptions target)
+    if(MSVC)
+        target_compile_definitions(${target} PRIVATE _HAS_EXCEPTIONS=0)
+        target_compile_options(${target} PRIVATE /EHa- /EHs-)
+    else()
+        target_compile_options(${target} PRIVATE -fno-exceptions)
+    endif()
+endfunction()
