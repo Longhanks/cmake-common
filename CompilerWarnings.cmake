@@ -61,11 +61,21 @@ function(target_add_compiler_warnings target)
     # gcc 10
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 10.1)
       list(APPEND COMPILER_WARNINGS
-        # -Wmismatched-tags needs either libstdc++ or gcc fix
-        # libstdc++ fix https://gcc.gnu.org/bugzilla/show_bug.cgi?id=96063
-        # gcc fix https://gcc.gnu.org/git/gitweb.cgi?p=gcc.git;h=5e4c9ebbab7bec3b5994f85aebce13bf37cf46e9
-        # -Wmismatched-tags
         -Wredundant-tags
+      )
+    endif()
+
+    # gcc >=10.2
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 10.2)
+      list(APPEND COMPILER_WARNINGS
+        -Wmismatched-tags
+      )
+    endif()
+
+    # gcc 11
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 11.1)
+      list(APPEND COMPILER_WARNINGS
+        -Wenum-conversion
       )
     endif()
 
@@ -77,6 +87,27 @@ function(target_add_compiler_warnings target)
       -Wno-padded
       -Wno-return-std-move-in-c++11
     )
+
+    # AppleClang 12 == clang 10
+    if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
+      if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 12.0)
+        list(APPEND COMPILER_WARNINGS
+          -Wno-poison-system-directories
+          )
+      endif()
+    # Regular clang
+    else()
+      if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 9.0)
+        list(APPEND COMPILER_WARNINGS
+          -Wno-ctad-maybe-unsupported
+        )
+      endif()
+      if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 10.0)
+        list(APPEND COMPILER_WARNINGS
+          -Wno-poison-system-directories
+        )
+      endif()
+    endif()
 
   else()
     list(APPEND COMPILER_WARNINGS
@@ -103,11 +134,36 @@ function(target_add_compiler_warnings target)
     )
   endif()
 
-  string(REPLACE ";" " " COMPILER_WARNINGS_STR "${COMPILER_WARNINGS}")
+  list(APPEND CXX_ONLY_COMPILER_WARNINGS
+    -Wctor-dtor-privacy
+    -Wmismatched-tags
+    -Wnoexcept
+    -Wnon-virtual-dtor
+    -Wold-style-cast
+    -Woverloaded-virtual
+    -Wredundant-tags
+    -Wsized-deallocation
+    -Wuseless-cast
+    -Wzero-as-null-pointer-constant
+  )
 
-  get_target_property(${target}_SOURCES ${PROJECT_NAME} SOURCES)
+  foreach(COMPILER_WARNING ${COMPILER_WARNINGS})
+    if(NOT ${COMPILER_WARNING} IN_LIST CXX_ONLY_COMPILER_WARNINGS)
+      list(APPEND C_COMPILER_WARNINGS ${COMPILER_WARNING})
+    endif()
+  endforeach()
+
+  string(REPLACE ";" " " C_COMPILER_WARNINGS_STR "${C_COMPILER_WARNINGS}")
+  string(REPLACE ";" " " CXX_COMPILER_WARNINGS_STR "${COMPILER_WARNINGS}")
+
+  get_target_property(${target}_SOURCES ${target} SOURCES)
 
   foreach(${target}_SOURCE ${${target}_SOURCES})
-    set_source_files_properties(${${target}_SOURCE} PROPERTIES COMPILE_FLAGS "${COMPILER_WARNINGS_STR}")
+    get_source_file_property(${${target}_SOURCE}_LANG ${${target}_SOURCE} LANGUAGE)
+    if("${${${target}_SOURCE}_LANG}" STREQUAL "C")
+      set_source_files_properties(${${target}_SOURCE} PROPERTIES COMPILE_FLAGS "${C_COMPILER_WARNINGS_STR}")
+    elseif("${${${target}_SOURCE}_LANG}" STREQUAL "CXX")
+      set_source_files_properties(${${target}_SOURCE} PROPERTIES COMPILE_FLAGS "${CXX_COMPILER_WARNINGS_STR}")
+    endif()
   endforeach()
 endfunction()
