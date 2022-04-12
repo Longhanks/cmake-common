@@ -85,7 +85,6 @@ function(target_add_compiler_warnings target)
       -Wno-c++98-compat
       -Wno-c++98-compat-pedantic
       -Wno-padded
-      -Wno-return-std-move-in-c++11
     )
 
     # AppleClang 12 == clang 10
@@ -97,6 +96,11 @@ function(target_add_compiler_warnings target)
       endif()
     # Regular clang
     else()
+      if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13.0)
+        list(APPEND COMPILER_WARNINGS
+          -Wno-return-std-move-in-c++11
+        )
+      endif()
       if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 9.0)
         list(APPEND COMPILER_WARNINGS
           -Wno-ctad-maybe-unsupported
